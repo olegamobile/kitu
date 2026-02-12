@@ -38,7 +38,31 @@ const ScanningScreen = ({ orderData, onBack }: Props) => {
 
   const handleSend = () => {
     if (!canSend) return;
-    setShowSentModal(true);
+
+    // Telegram Mini App integration
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      const data = {
+        counterparty: orderData.counterparty,
+        orderNumber: orderData.orderNumber,
+        plannedQuantity: orderData.plannedQuantity,
+        scannedCount,
+        codes: scannedCodes.map(c => ({ code: c.code, time: c.time })),
+        timestamp: new Date().toISOString()
+      };
+
+      try {
+        tg.sendData(JSON.stringify(data));
+        // sendData usually closes the app, but we still show the modal just in case
+        setShowSentModal(true);
+      } catch (e) {
+        console.error("Telegram sendData error:", e);
+        setShowSentModal(true);
+      }
+    } else {
+      setShowSentModal(true);
+    }
+
     setTimeout(() => {
       setShowSentModal(false);
       onBack();

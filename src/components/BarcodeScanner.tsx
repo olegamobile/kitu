@@ -34,6 +34,13 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
       if (disabledRef.current) return;
       const now = Date.now();
       if (code === lastScannedRef.current && now - lastScannedTimeRef.current < DEBOUNCE_MS) return;
+
+      // Telegram Haptic Feedback
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg?.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred("success");
+      }
+
       lastScannedRef.current = code;
       lastScannedTimeRef.current = now;
       onScan(code);
