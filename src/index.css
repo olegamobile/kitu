@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 10%;
+    --foreground: 210 20% 92%;
+
+    --card: 220 18% 14%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 220 18% 14%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 152 60% 48%;
+    --primary-foreground: 220 20% 10%;
+
+    --secondary: 220 16% 20%;
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 220 14% 18%;
+    --muted-foreground: 215 12% 55%;
+
+    --accent: 38 90% 55%;
+    --accent-foreground: 220 20% 10%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 20% 95%;
+
+    --border: 220 14% 22%;
+    --input: 220 14% 22%;
+    --ring: 152 60% 48%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 220 18% 12%;
+    --sidebar-foreground: 210 20% 92%;
+    --sidebar-primary: 152 60% 48%;
+    --sidebar-primary-foreground: 220 20% 10%;
+    --sidebar-accent: 220 14% 18%;
+    --sidebar-accent-foreground: 210 20% 92%;
+    --sidebar-border: 220 14% 22%;
+    --sidebar-ring: 152 60% 48%;
+
+    --scan-success: 152 60% 48%;
+    --scan-glow: 152 60% 48%;
+    --warning: 38 90% 55%;
+  }
+
+  .dark {
+    --background: 220 20% 10%;
+    --foreground: 210 20% 92%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer utilities {
+  .scan-pulse {
+    animation: scanPulse 2s ease-in-out infinite;
+  }
+
+  .fade-in-up {
+    animation: fadeInUp 0.3s ease-out;
+  }
+
+  .slide-in-right {
+    animation: slideInRight 0.25s ease-out;
+  }
+}
+
+@keyframes scanPulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--scan-glow) / 0.4); }
+  50% { box-shadow: 0 0 0 12px hsl(var(--scan-glow) / 0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scanLine {
+  0% { top: 0; }
+  50% { top: calc(100% - 2px); }
+  100% { top: 0; }
+}
+
+.animate-scan-line {
+  animation: scanLine 2s ease-in-out infinite;
+  position: absolute;
+}
