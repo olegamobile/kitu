@@ -62,7 +62,7 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased h-dvh overflow-hidden;
     font-family: 'Inter', sans-serif;
   }
 
@@ -86,27 +86,63 @@
 }
 
 @keyframes scanPulse {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--scan-glow) / 0.4); }
-  50% { box-shadow: 0 0 0 12px hsl(var(--scan-glow) / 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--scan-glow) / 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 12px hsl(var(--scan-glow) / 0);
+  }
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes scanLine {
-  0% { top: 0; }
-  50% { top: calc(100% - 2px); }
-  100% { top: 0; }
+  0% {
+    top: 0;
+  }
+
+  50% {
+    top: calc(100% - 2px);
+  }
+
+  100% {
+    top: 0;
+  }
 }
 
 .animate-scan-line {
   animation: scanLine 2s ease-in-out infinite;
   position: absolute;
+}
+
+#html5qr-scanner video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 0.75rem;
 }

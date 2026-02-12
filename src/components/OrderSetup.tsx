@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { Package, ChevronRight, ScanBarcode } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { OrderData } from "@/pages/Index";
 
 const COUNTERPARTIES = [
-  "ООО «Ромашка»",
-  "ИП Иванов А.С.",
-  "ООО «ТоргСервис»",
-  "АО «Фармацевт»",
-  "ООО «Логистик Про»",
+  "ООО «Эколаб»",
+  "ООО «Дайверси»",
+  "ООО «Лореаль»",
+  "ООО «ABC»",
 ];
 
 interface Props {
@@ -18,7 +24,6 @@ const OrderSetup = ({ onStart }: Props) => {
   const [counterparty, setCounterparty] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
   const [plannedQuantity, setPlannedQuantity] = useState("");
-  const [showDropdown, setShowDropdown] = useState(false);
 
   const canStart = counterparty.trim() !== "" && orderNumber.trim() !== "";
 
@@ -31,12 +36,9 @@ const OrderSetup = ({ onStart }: Props) => {
     });
   };
 
-  const filteredParties = COUNTERPARTIES.filter((p) =>
-    p.toLowerCase().includes(counterparty.toLowerCase())
-  );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-dvh bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-5 pt-12 pb-6">
         <div className="flex items-center gap-3 mb-1">
@@ -52,37 +54,22 @@ const OrderSetup = ({ onStart }: Props) => {
 
       {/* Form */}
       <div className="flex-1 px-5 space-y-4">
-        <div className="space-y-1.5 relative">
+        <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Контрагент
           </label>
-          <input
-            type="text"
-            value={counterparty}
-            onChange={(e) => {
-              setCounterparty(e.target.value);
-              setShowDropdown(true);
-            }}
-            onFocus={() => setShowDropdown(true)}
-            placeholder="Начните вводить название..."
-            className="w-full h-12 bg-card border border-border rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all text-sm"
-          />
-          {showDropdown && counterparty.length > 0 && filteredParties.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl overflow-hidden z-10 fade-in-up">
-              {filteredParties.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => {
-                    setCounterparty(p);
-                    setShowDropdown(false);
-                  }}
-                  className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-secondary/60 transition-colors border-b border-border/50 last:border-b-0"
-                >
+          <Select onValueChange={setCounterparty} value={counterparty}>
+            <SelectTrigger className="w-full h-12 bg-card border-border rounded-xl px-4 text-sm">
+              <SelectValue placeholder="Выберите контрагента..." />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border">
+              {COUNTERPARTIES.map((p) => (
+                <SelectItem key={p} value={p} className="focus:bg-secondary">
                   {p}
-                </button>
+                </SelectItem>
               ))}
-            </div>
-          )}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1.5">

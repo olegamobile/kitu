@@ -50,7 +50,7 @@ const ScanningScreen = ({ orderData, onBack }: Props) => {
     : 0;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col relative">
+    <div className="h-dvh bg-background flex flex-col relative overflow-hidden">
       {/* Header */}
       <div className="px-4 pt-10 pb-3 border-b border-border/50">
         <div className="flex items-center justify-between mb-3">

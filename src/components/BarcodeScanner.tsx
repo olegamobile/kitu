@@ -14,6 +14,12 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
   const lastScannedRef = useRef<string>("");
   const lastScannedTimeRef = useRef<number>(0);
   const animFrameRef = useRef<number>(0);
+  const disabledRef = useRef(disabled);
+
+  // Update ref whenever prop changes
+  useEffect(() => {
+    disabledRef.current = disabled;
+  }, [disabled]);
 
   const [cameraActive, setCameraActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,14 +31,14 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
 
   const handleDetected = useCallback(
     (code: string) => {
-      if (disabled) return;
+      if (disabledRef.current) return;
       const now = Date.now();
       if (code === lastScannedRef.current && now - lastScannedTimeRef.current < DEBOUNCE_MS) return;
       lastScannedRef.current = code;
       lastScannedTimeRef.current = now;
       onScan(code);
     },
-    [onScan, disabled]
+    [onScan]
   );
 
   // Check for native Barcode Detection API
@@ -42,7 +48,7 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
     (video: HTMLVideoElement) => {
       // @ts-ignore
       const detector = new window.BarcodeDetector({
-        formats: ["code_128", "code_39", "ean_13", "ean_8", "data_matrix", "qr_code"],
+        formats: ["code_128", "code_39", "ean_13", "ean_8", "upc_a", "upc_e", "codabar", "itf"],
       });
 
       const scan = async () => {
@@ -68,75 +74,122 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
   );
 
   const startHtml5QrcodeScanning = useCallback(
-    async (stream: MediaStream) => {
+    async () => {
       const { Html5Qrcode } = await import("html5-qrcode");
 
-      // Create a hidden container for html5-qrcode
+      // Set method FIRST to ensure the div is visible in React
+      setScanMethod("html5-qrcode");
+
+      // Give React a frame to update visibility
+      await new Promise(resolve => setTimeout(resolve, 50));
+
       let container = document.getElementById("html5qr-scanner");
       if (!container) {
-        container = document.createElement("div");
-        container.id = "html5qr-scanner";
-        container.style.display = "none";
-        document.body.appendChild(container);
+        console.error("Scanner container #html5qr-scanner not found in DOM");
+        setError("Код сканера не загружен");
+        return;
       }
+      // container.style.display = "block"; // This line is removed as the display is controlled by state
 
       const scanner = new Html5Qrcode("html5qr-scanner");
       scannerRef.current = scanner;
 
-      const videoTrack = stream.getVideoTracks()[0];
-      // @ts-ignore - html5-qrcode internal method
-      await scanner.start(
-        { deviceId: { exact: videoTrack.getSettings().deviceId || "" } },
-        {
-          fps: 10,
-          qrbox: { width: 280, height: 160 },
-          aspectRatio: 1.0,
-        },
-        (decodedText: string) => {
-          handleDetected(decodedText);
-        },
-        () => {}
-      );
-      setScanMethod("html5-qrcode");
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 15,
+            qrbox: (viewWidth, viewHeight) => {
+              const width = Math.min(viewWidth * 0.85, 400);
+              const height = Math.min(viewHeight * 0.35, 180);
+              return { width, height };
+            },
+            aspectRatio: 1.0,
+            // @ts-ignore
+            formatsToSupport: [
+              2, // CODABAR
+              3, // CODE_39
+              4, // CODE_93
+              5, // CODE_128
+              7, // EAN_8
+              8, // EAN_13
+              9, // ITF
+              14, // UPC_A
+              15, // UPC_E
+              16, // UPC_EAN_EXTENSION
+            ]
+          },
+          (decodedText: string) => {
+            handleDetected(decodedText);
+          },
+          () => { }
+        );
+
+        // @ts-ignore
+        const stream = scanner.scannerPaused ? null : scanner.videoElement?.srcObject as MediaStream;
+        if (stream) {
+          streamRef.current = stream;
+          const track = stream.getVideoTracks()[0];
+          const capabilities = track.getCapabilities?.() as any;
+          if (capabilities?.torch) {
+            setHasTorch(true);
+          }
+        }
+      } catch (err) {
+        console.error("Html5Qrcode error:", err);
+        setError("Ошибка камеры: " + (typeof err === 'string' ? err : "Нет доступа"));
+        setScanMethod(null);
+        throw err;
+      }
     },
     [handleDetected]
   );
 
   const startCamera = useCallback(async () => {
     setError(null);
+    setHasTorch(false);
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+      setError("Камера недоступна. Используйте HTTPS или localhost (Secure Context).");
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      });
-
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-
-      // Check torch support
-      const track = stream.getVideoTracks()[0];
-      const capabilities = track.getCapabilities?.() as any;
-      if (capabilities?.torch) {
-        setHasTorch(true);
-      }
-
       setCameraActive(true);
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Try native API first, fallback to html5-qrcode
-      if (hasNativeAPI && videoRef.current) {
-        startNativeScanning(videoRef.current);
+      // Prefer html5-qrcode on mobile as native API is often unstable/buggy
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (hasNativeAPI && !isMobile) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+
+          const track = stream.getVideoTracks()[0];
+          const capabilities = track.getCapabilities?.() as any;
+          if (capabilities?.torch) {
+            setHasTorch(true);
+          }
+
+          startNativeScanning(videoRef.current);
+        }
       } else {
-        await startHtml5QrcodeScanning(stream);
+        await startHtml5QrcodeScanning();
       }
     } catch (err: any) {
       console.error("Camera error:", err);
+      setCameraActive(false);
       if (err.name === "NotAllowedError") {
         setError("Разрешите доступ к камере");
       } else if (err.name === "NotFoundError") {
@@ -147,12 +200,16 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
     }
   }, [hasNativeAPI, startNativeScanning, startHtml5QrcodeScanning]);
 
-  const stopCamera = useCallback(() => {
+  const stopCamera = useCallback(async () => {
     cancelAnimationFrame(animFrameRef.current);
     if (scannerRef.current) {
       try {
-        scannerRef.current.stop();
-      } catch {}
+        await scannerRef.current.stop();
+        const container = document.getElementById("html5qr-scanner");
+        if (container) container.style.display = "none";
+      } catch (e) {
+        console.warn("Error stopping scanner:", e);
+      }
       scannerRef.current = null;
     }
     if (streamRef.current) {
@@ -171,7 +228,7 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
     try {
       await track.applyConstraints({ advanced: [{ torch: !torch } as any] });
       setTorch(!torch);
-    } catch {}
+    } catch { }
   }, [torch]);
 
   useEffect(() => {
@@ -180,22 +237,36 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
     };
   }, [stopCamera]);
 
+  // Auto-stop camera when disabled (limit reached)
+  useEffect(() => {
+    if (disabled && cameraActive) {
+      stopCamera();
+    }
+  }, [disabled, cameraActive, stopCamera]);
+
   return (
     <div className="flex flex-col gap-2">
       {/* Camera viewport */}
-      <div className="relative w-full aspect-[16/10] bg-black rounded-xl overflow-hidden border border-border/30">
+      <div id="scanner-container" className="relative w-full aspect-[16/10] bg-black rounded-xl overflow-hidden border border-border/30">
         {cameraActive ? (
           <>
-            <video
-              ref={videoRef}
-              className="w-full h-full object-cover"
-              playsInline
-              muted
+            {scanMethod === "native" && (
+              <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                playsInline
+                muted
+              />
+            )}
+            <div
+              id="html5qr-scanner"
+              className="absolute inset-0 z-[1]"
+              style={{ display: scanMethod === "html5-qrcode" ? "block" : "none" }}
             />
             <canvas ref={canvasRef} className="hidden" />
 
             {/* Scan area overlay */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
               <div className="w-[70%] h-[50%] border-2 border-primary/60 rounded-lg relative">
                 <div className="absolute -top-[1px] -left-[1px] w-5 h-5 border-t-2 border-l-2 border-primary rounded-tl-md" />
                 <div className="absolute -top-[1px] -right-[1px] w-5 h-5 border-t-2 border-r-2 border-primary rounded-tr-md" />
@@ -208,7 +279,7 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
 
             {/* Method badge */}
             {scanMethod && (
-              <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md">
+              <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md z-20">
                 <p className="text-[9px] text-white/70 font-mono">
                   {scanMethod === "native" ? "Barcode API" : "html5-qrcode"}
                 </p>
@@ -216,7 +287,7 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
             )}
 
             {/* Controls */}
-            <div className="absolute top-2 right-2 flex gap-1.5">
+            <div className="absolute top-2 right-2 flex gap-1.5 z-20">
               {hasTorch && (
                 <button
                   onClick={toggleTorch}
@@ -234,7 +305,7 @@ const BarcodeScanner = ({ onScan, disabled }: Props) => {
             </div>
 
             {disabled && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-30">
                 <p className="text-xs text-white/70">Сканирование остановлено</p>
               </div>
             )}
