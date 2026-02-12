@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+# КИТУ Сканер (KITU Scanner)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Профессиональное мобильное веб-приложение для сканирования КИТУ (кодов идентификации транспортной упаковки) системы «Честный Знак» для компании «Интерфилл».
 
-Currently, two official plugins are available:
+## 🎯 Назначение проекта
+Приложение предназначено для складских сотрудников. Оно позволяет быстро фиксировать отгрузки, выбирая контрагента и сканируя линейные штрих-коды прямо через браузер смартфона.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## 🛠 Технологический стек
+- **Framework:** React + TypeScript + Vite
+- **UI:** TailwindCSS + Shadcn/UI + Lucide Icons
+- **Scanner:** `html5-qrcode` (основной для мобильных) + Native Browser `BarcodeDetector` API (фоллбек)
+- **Deployment:** Vercel (через `vercel --prod`)
+- **PWA:** Настроен манифест и Service Worker для установки на рабочий стол.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 🚀 Как запустить (Development)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. Локальная разработка
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Тестирование на реальном смартфоне (Local Network HTTPS)
+Камера в браузере работает **только по протоколу HTTPS**. Для этого в проекте есть Python-скрипт, который автоматически создает SSL-сертификаты для вашего IP:
+```bash
+npm run build
+python https_server.py
 ```
+Откройте ссылку `https://<ваш-ip>:8000` на телефоне.
+
+---
+
+## 🧠 Технические особенности (Важно для будущих агентов)
+
+### 1. Оптимизация сканера
+- **Проблема черного экрана**: Исправлена гонка условий. Контейнер сканера (`#html5qr-scanner`) должен иметь `display: block` **до** того, как библиотека начнет инициализацию.
+- **Стабильность**: На мобильных устройствах принудительно используется `html5-qrcode`, так как нативный `BarcodeDetector` в Chrome на Android иногда ведет себя нестабильно.
+- **Остановка**: Использован `useRef` для пропса `disabled`, чтобы избежать «замыкания» (stale closure) в коллбэках библиотеки. Сканер моментально замирает при достижении лимита.
+
+### 2. Мобильная верстка
+- **Dynamic Viewport Height (dvh)**: Контейнеры используют `h-dvh` вместо `h-screen`, чтобы адресная строка мобильного браузера не перекрывала нижние кнопки.
+- **Orientation**: Приложение оптимизировано под портретный режим.
+
+### 3. PWA (Progressive Web App)
+- Файлы `public/manifest.json` и `public/sw.js` позволяют пользователю «Установить» сайт как приложение. Это убирает адресную строку и дает ощущение нативного APK.
+
+---
+
+## 📦 Сборка и Деплой
+1. **Сборка:** `npm run build`
+2. **Публикация:** `vercel --prod` (настроено на домен `kitu-neon.vercel.app`)
+
+---
+
+## 📝 Текущий статус
+- [x] Выбор контрагента (Select)
+- [x] Сканирование порциями по лимиту
+- [x] Авто-выключение камеры после завершения плана
+- [x] PWA конфигурация
+- [x] Полная поддержка HTTPS для мобильных
+
+**Контрагенты (редактируются в `OrderSetup.tsx`):** Эколаб, Дайверси, Лореаль, ABC.
